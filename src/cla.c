@@ -201,7 +201,7 @@ void cla() {
  */
 void convertAnswerToHex() {
 	for (int i = 0; i < input_size; hexAns[i] = binToHex(sumi+4*(input_size-i-1)), ++i);
-	printf("0%s\n",hexAns);
+	printf("%s\n",hexAns);
 }
 
 /**
