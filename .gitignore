@@ -113,3 +113,6 @@ local.properties
 # Additional Eclipse extensions
 .project
 Debug
+
+# ignore personal todo list
+todo.txt

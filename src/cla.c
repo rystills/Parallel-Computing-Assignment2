@@ -3,11 +3,11 @@
 #include <errno.h>
 
 //EXAMPLE DATA STRUCTURE DESIGN AND LAYOUT FOR CLA
-#define input_size 1024
-#define block_size 8
+#define input_size 262144
+#define block_size 32
 //Do not touch these defines
 #define digits (input_size+1)
-#define bits digits*4
+#define bits input_size*4
 #define ngroups bits/block_size
 #define nsections ngroups/block_size
 #define nsupersections nsections/block_size
