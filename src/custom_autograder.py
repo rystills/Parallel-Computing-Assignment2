@@ -7,7 +7,7 @@ def main():
     path = "C:\\Users\\Ryan\\Desktop\\school files\\RPI\\spring 2019\\Parallel Computing\\programming\\Parallel-Computing-Assignment2\\test_cases"
     #run all the test cases, sticking output in O0-O8
     for i in range(numTests):
-        os.system('a.exe < "{0}\\t{1}.txt" > "{2}\\O{3}.txt"'.format(path,i,path,i))
+        os.system('a.exe "{0}\\t{1}.txt" "{2}\\O{3}.txt"'.format(path,i,path,i))
     #read all the test results to two lists
     userOutput = []
     expectedOutput = []

@@ -216,7 +216,14 @@ void parseInput() {
 	for (int i = 0; i < input_size; hexToBin(hex2[i],bin2+4*(input_size-i-1)), ++i);
 }
 
-int main(void) {
+int main(int argc, char* argv[]) {
+	if (argc != 3) {
+		fprintf(stderr,"Error: %d input argument[s] supplied, but 2 were expected. Usage: mpirun -np X ./cla test1.txt test1-output.txt",argc-1);
+		exit(1);
+	}
+	//treat test1.txt as stdin, and test1-output.txt as stdout
+	freopen(argv[1], "r", stdin);
+	freopen(argv[2], "w", stdout);
 	parseInput();
 	cla();
 	convertAnswerToHex();
