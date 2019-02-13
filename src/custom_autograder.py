@@ -1,20 +1,24 @@
-import os, cmd
+from __future__ import print_function
+import os, cmd, sys
+
 numTests = 1
 
 def main():
-    os.system("gcc cla.c")
+    ### Usage: python custom_autograder.py #ranks ###
+    
+    os.system("mpicc \-o cla.out cla.c")
     #this is the path to the folder containing all of the provided test cases and correct output
-    path = "C:\\Users\\Ryan\\Desktop\\school files\\RPI\\spring 2019\\Parallel Computing\\programming\\Parallel-Computing-Assignment2\\test_cases"
+    path = "/home/parallel/spring-2019/stillr/project2/test_cases"
     #run all the test cases, sticking output in O0-O8
     for i in range(numTests):
-        os.system('a.exe "{0}\\t{1}.txt" "{2}\\O{3}.txt"'.format(path,i,path,i))
+        os.system('mpirun -np {0} ./cla.out "{1}/t{1}.txt" "{2}/O{3}.txt"'.format(sys.argv[1], path,i,path,i))
     #read all the test results to two lists
     userOutput = []
     expectedOutput = []
     for i in range(numTests):
-        with open('{0}\\O{1}.txt'.format(path,i),"r") as f:
+        with open('{0}/O{1}.txt'.format(path,i),"r") as f:
             userOutput.append(f.readlines())
-        with open('{0}\\A{1}.txt'.format(path,i),"r") as f:
+        with open('{0}/A{1}.txt'.format(path,i),"r") as f:
             expectedOutput.append(f.readlines())
     #compare the test results
     print("Test1: Pass")

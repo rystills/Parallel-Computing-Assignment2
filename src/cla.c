@@ -71,7 +71,7 @@ char binToHex(int* bin) {
  * pi is the propagate function. It tells us if we propagated a carry in the ith stage for the current bit.
  */
 void calc_gi_pi() {
-	for (int i = 0; i < bits; ++i) {
+	for (int i = 0; i < (int)(bits*rankFactor); ++i) {
 		gi[i] = bin1[i] & bin2[i];
 		pi[i] = (bin1[i] | bin2[i]);
 	}
@@ -83,7 +83,7 @@ void calc_gi_pi() {
  * gpj is the propagate function for the current 8-bit group.
  */
 void calc_ggj_gpj() {
-	for (int i = 0; i < ngroups; ++i) {
+	for (int i = 0; i < (int)(ngroups*rankFactor); ++i) {
 		int iblock = block_size*i;
 		ggj[i] = gi[iblock+block_size-1];
 		for (int j = iblock+block_size-2; j >= iblock; --j) {
@@ -103,7 +103,7 @@ void calc_ggj_gpj() {
  * spk is the propagate function for the current 64-bit section.
  */
 void calc_sgk_spk() {
-	for (int i = 0; i < nsections; ++i) {
+	for (int i = 0; i < (int)(nsections*rankFactor); ++i) {
 		int iblock = block_size*i;
 		sgk[i] = ggj[iblock+block_size-1];
 		for (int j = iblock+block_size-2; j >= iblock; --j) {
@@ -123,7 +123,7 @@ void calc_sgk_spk() {
  * sspl is the propagate function for the current 512-bit super section.
  */
 void calc_ssgl_sspl() {
-	for (int i = 0; i < nsupersections; ++i) {
+	for (int i = 0; i < (int)(nsupersections*rankFactor); ++i) {
 		int iblock = block_size*i;
 		ssgl[i] = sgk[iblock+block_size-1];
 		for (int j = iblock+block_size-2; j >= iblock; --j) {
@@ -143,7 +143,7 @@ void calc_ssgl_sspl() {
  */
 void calc_sscl() {
 	sscl[0] = ssgl[0];
-	for (int i = 1; i < nsupersections; ++i) {
+	for (int i = 1; i < (int)(nsupersections*rankFactor); ++i) {
 		sscl[i] = (ssgl[i] | (sspl[i]&sscl[i-1]));
 	}
 }
@@ -153,7 +153,7 @@ void calc_sscl() {
  */
 void calc_sck() {
 	sck[0] = sgk[0];
-	for (int i = 1; i < nsections; ++i) {
+	for (int i = 1; i < (int)(nsections*rankFactor); ++i) {
 		sck[i] = (sgk[i] | (spk[i]&(i%block_size==0 ? sscl[i/block_size-1] : sck[i-1])));
 	}
 }
@@ -163,7 +163,7 @@ void calc_sck() {
  */
 void calc_gcj() {
 	gcj[0] = ggj[0];
-	for (int i = 1; i < ngroups; ++i) {
+	for (int i = 1; i < (int)(ngroups*rankFactor); ++i) {
 		gcj[i] = (ggj[i] | (gpj[i]&(i%block_size==0 ? sck[i/block_size-1] : gcj[i-1])));
 	}
 }
@@ -173,7 +173,7 @@ void calc_gcj() {
  */
 void calc_ci() {
 	ci[0] = gi[0];
-	for (int i = 1; i < bits; ++i) {
+	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		ci[i] = (gi[i] | (pi[i]&(i%block_size==0 ? gcj[i/block_size-1] : ci[i-1])));
 	}
 }
@@ -184,7 +184,7 @@ void calc_ci() {
  */
 void calc_sumi() {
 	sumi[0] = bin1[0] ^ bin2[0];
-	for (int i = 1; i < bits; ++i) {
+	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		sumi[i] = bin1[i] ^ bin2[i] ^ ci[i-1];
 	}
 }
