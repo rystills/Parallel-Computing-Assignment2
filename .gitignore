@@ -116,3 +116,10 @@ Debug
 
 # ignore personal todo list
 todo.txt
+
+# ignore submission recordings
+submissions
+
+# ignore a few more misc files
+starterCode.c
+*.lnk

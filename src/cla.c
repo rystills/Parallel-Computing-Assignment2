@@ -42,6 +42,10 @@ int rank = -1;
 float rankFactor = -1;
 int elementsPerProc = -1;
 bool usingBarrier = true;
+//new vars for storing data subsets
+int *subBin1;
+int *subBin2;
+int *fullSumi;
 
 /**
  * simple hex char to binary conversion
@@ -193,8 +197,8 @@ void calc_sumi() {
  * scatter the input binary so that everyone gets their own chunk
  */
 void scatterData() {
-	int *subBin1 = malloc(sizeof(int) * elementsPerProc);
-	int *subBin2 = malloc(sizeof(int) * elementsPerProc);
+	subBin1 = malloc(sizeof(int) * elementsPerProc);
+	subBin2 = malloc(sizeof(int) * elementsPerProc);
 
 	MPI_Scatter(bin1, elementsPerProc, MPI_INT, subBin1, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(bin2, elementsPerProc, MPI_INT, subBin2, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
@@ -204,7 +208,6 @@ void scatterData() {
  * master collects the calculated output binary
  */
 void gatherData() {
-	int *fullSumi;
 	if (rank == 0) {
 		fullSumi = malloc(sizeof(int) * elementsPerProc);
 	}
@@ -289,5 +292,8 @@ int main(int argc, char* argv[]) {
 	//master handles the final output
 	if (rank == 0) {
 		convertAnswerToHex();
+		free(fullSumi);
 	}
+	free(subBin1);
+	free(subBin2);
 }

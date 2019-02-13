@@ -11,7 +11,7 @@ def main():
     path = "/home/parallel/spring-2019/stillr/project2/test_cases"
     #run all the test cases, sticking output in O0-O8
     for i in range(numTests):
-        os.system('mpirun -np {0} ./cla.out "{1}/t{1}.txt" "{2}/O{3}.txt"'.format(sys.argv[1], path,i,path,i))
+        os.system('mpirun -np {0} ./cla.out {1}/t{2}.txt {3}/O{4}.txt'.format(sys.argv[1], path,i,path,i))
     #read all the test results to two lists
     userOutput = []
     expectedOutput = []
