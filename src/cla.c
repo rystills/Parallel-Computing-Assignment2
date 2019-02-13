@@ -40,6 +40,7 @@ char hexAns[digits];
 int numRanks = -1;
 int rank = -1;
 float rankFactor = -1;
+int elementsPerProc = -1;
 bool usingBarrier = true;
 
 /**
@@ -192,14 +193,22 @@ void calc_sumi() {
  * scatter the input binary so that everyone gets their own chunk
  */
 void scatterData() {
+	int *subBin1 = malloc(sizeof(int) * elementsPerProc);
+	int *subBin2 = malloc(sizeof(int) * elementsPerProc);
 
+	MPI_Scatter(bin1, elementsPerProc, MPI_INT, subBin1, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatter(bin2, elementsPerProc, MPI_INT, subBin2, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 /**
  * master collects the calculated output binary
  */
 void gatherData() {
-
+	int *fullSumi;
+	if (rank == 0) {
+		fullSumi = malloc(sizeof(int) * elementsPerProc);
+	}
+	MPI_Gather(&sumi, 1, MPI_INT, fullSumi, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 /**
@@ -261,6 +270,7 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	rankFactor = 1/(float)numRanks;
+	elementsPerProc = bits*rankFactor;
 	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f\n",rank,numRanks,numRanks,rankFactor);
 
 	//treat test1.txt as stdin, and test1-output.txt as stdout
