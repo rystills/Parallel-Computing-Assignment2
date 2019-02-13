@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <mpi.h>
+#include <stdbool.h>
 
 //EXAMPLE DATA STRUCTURE DESIGN AND LAYOUT FOR CLA
 #define input_size 262144
@@ -34,6 +36,11 @@ char hex1[digits];
 char hex2[digits];
 //character array to store the final hex answer
 char hexAns[digits];
+//MPI data
+int numRanks = -1;
+int rank = -1;
+float rankFactor = -1;
+bool usingBarrier = true;
 
 /**
  * simple hex char to binary conversion
@@ -182,18 +189,44 @@ void calc_sumi() {
 }
 
 /**
- * main cla routine; calls all of the different sub-steps in order
+ * scatter the input binary so that everyone gets their own chunk
+ */
+void scatterData() {
+
+}
+
+/**
+ * master collects the calculated output binary
+ */
+void gatherData() {
+
+}
+
+/**
+ * main cla routine; calls all of the different sub-steps in order, with barriers between each step if enabled
  */
 void cla() {
+	scatterData();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_gi_pi();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_ggj_gpj();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_sgk_spk();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_ssgl_sspl();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_sscl();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_sck();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_gcj();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_ci();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_sumi();
+	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
+	gatherData();
 }
 
 /**
@@ -217,14 +250,34 @@ void parseInput() {
 }
 
 int main(int argc, char* argv[]) {
+	//usage check
 	if (argc != 3) {
 		fprintf(stderr,"Error: %d input argument[s] supplied, but 2 were expected. Usage: mpirun -np X ./cla test1.txt test1-output.txt",argc-1);
 		exit(1);
 	}
+
+	//init MPI and grab size and rank
+	MPI_Init( &argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	rankFactor = 1/(float)numRanks;
+	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f\n",rank,numRanks,numRanks,rankFactor);
+
 	//treat test1.txt as stdin, and test1-output.txt as stdout
 	freopen(argv[1], "r", stdin);
 	freopen(argv[2], "w", stdout);
-	parseInput();
+
+
+	//master reads and formats the input
+	if (rank == 0) {
+		parseInput();
+	}
+
+	//everybody runs the main routine
 	cla();
-	convertAnswerToHex();
+
+	//master handles the final output
+	if (rank == 0) {
+		convertAnswerToHex();
+	}
 }
