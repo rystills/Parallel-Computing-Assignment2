@@ -27,7 +27,7 @@ int sck[nsections] = {0};
 int ssgl[nsupersections] = {0} ;
 int sspl[nsupersections] = {0} ;
 int sscl[nsupersections] = {0} ;
-int sumi[bits] = {0};
+int *subSumi = NULL;
 //Integer array of inputs in binary form
 unsigned int bin1[bits];
 unsigned int bin2[bits];
@@ -43,9 +43,9 @@ float rankFactor = -1;
 int elementsPerProc = -1;
 bool usingBarrier = true;
 //new vars for storing data subsets
-int *subBin1;
-int *subBin2;
-int *fullSumi;
+int *subBin1 = NULL;
+int *subBin2 = NULL;
+int *fullSumi = NULL;
 
 /**
  * simple hex char to binary conversion
@@ -76,8 +76,9 @@ char binToHex(int* bin) {
  */
 void calc_gi_pi() {
 	for (int i = 0; i < (int)(bits*rankFactor); ++i) {
-		gi[i] = bin1[i] & bin2[i];
-		pi[i] = (bin1[i] | bin2[i]);
+		//NOTE: switched bin1 and bin2 to subBin1 and subBin2 so that each rank uses its scattered bits, rather than an empty array
+		gi[i] = subBin1[i] & subBin2[i];
+		pi[i] = (subBin1[i] | subBin2[i]);
 	}
 }
 
@@ -187,9 +188,10 @@ void calc_ci() {
  * sumi stores the final sum for the current bit
  */
 void calc_sumi() {
-	sumi[0] = bin1[0] ^ bin2[0];
+	//NOTE: changed bin1 and bin2 to subBin1 and subBin2 here as well
+	subSumi[0] = subBin1[0] ^ subBin2[0];
 	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
-		sumi[i] = bin1[i] ^ bin2[i] ^ ci[i-1];
+		subSumi[i] = subBin1[i] ^ subBin2[i] ^ ci[i-1];
 	}
 }
 
@@ -209,9 +211,9 @@ void scatterData() {
  */
 void gatherData() {
 	if (rank == 0) {
-		fullSumi = malloc(sizeof(int) * elementsPerProc);
+		fullSumi = malloc(sizeof(int) * bits);
 	}
-	MPI_Gather(&sumi, 1, MPI_INT, fullSumi, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(subSumi, 1, MPI_INT, fullSumi, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 /**
@@ -245,7 +247,7 @@ void cla() {
  * convert the calculated sumi back into hex for final solution
  */
 void convertAnswerToHex() {
-	for (int i = 0; i < input_size; hexAns[i] = binToHex(sumi+4*(input_size-i-1)), ++i);
+	for (int i = 0; i < input_size; hexAns[i] = binToHex(fullSumi+4*(input_size-i-1)), ++i);
 	printf("%s\n",hexAns);
 }
 
@@ -274,7 +276,8 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	rankFactor = 1/(float)numRanks;
 	elementsPerProc = bits*rankFactor;
-	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f\n",rank,numRanks,numRanks,rankFactor);
+	subSumi = malloc(sizeof(int) * elementsPerProc);
+	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f | elementsPerProc is %d\n",rank,numRanks,numRanks,rankFactor,elementsPerProc);
 
 	//treat test1.txt as stdin, and test1-output.txt as stdout
 	if (rank == 0) {
@@ -294,5 +297,6 @@ int main(int argc, char* argv[]) {
 	}
 	free(subBin1);
 	free(subBin2);
+	free(subSumi);
 	MPI_Finalize();
 }
