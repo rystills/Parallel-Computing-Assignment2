@@ -213,7 +213,7 @@ void gatherData() {
 	if (rank == 0) {
 		fullSumi = malloc(sizeof(int) * bits);
 	}
-	MPI_Gather(subSumi, 1, MPI_INT, fullSumi, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(subSumi, elementsPerProc, MPI_INT, fullSumi, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 /**
