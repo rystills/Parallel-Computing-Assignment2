@@ -123,3 +123,4 @@ submissions
 # ignore a few more misc files
 starterCode.c
 *.lnk
+failed_output

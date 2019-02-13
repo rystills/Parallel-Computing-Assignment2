@@ -76,7 +76,6 @@ char binToHex(int* bin) {
  */
 void calc_gi_pi() {
 	for (int i = 0; i < (int)(bits*rankFactor); ++i) {
-		//NOTE: switched bin1 and bin2 to subBin1 and subBin2 so that each rank uses its scattered bits, rather than an empty array
 		gi[i] = subBin1[i] & subBin2[i];
 		pi[i] = (subBin1[i] | subBin2[i]);
 	}
@@ -147,9 +146,24 @@ void calc_ssgl_sspl() {
  * sscl stores whether or not there is a carry bit for the current 512-bit super section.
  */
 void calc_sscl() {
-	sscl[0] = ssgl[0];
+	//everyone but rank 0 receives the carry in
+	if (rank == 0) {
+		sscl[0] = ssgl[0];
+	}
+	else {
+		int prevSscl;
+		MPI_Recv(&prevSscl, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		sscl[0] = (ssgl[0] | (sspl[0]&prevSscl));
+	}
+
+	//everyone does the calculations
 	for (int i = 1; i < (int)(nsupersections*rankFactor); ++i) {
 		sscl[i] = (ssgl[i] | (sspl[i]&sscl[i-1]));
+	}
+
+	//everyone but rank n-1 sends the carry out
+	if (rank != numRanks-1) {
+		MPI_Send(&sscl[(int)(nsupersections*rankFactor)-1], 1, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
 	}
 }
 /**
@@ -188,7 +202,6 @@ void calc_ci() {
  * sumi stores the final sum for the current bit
  */
 void calc_sumi() {
-	//NOTE: changed bin1 and bin2 to subBin1 and subBin2 here as well
 	subSumi[0] = subBin1[0] ^ subBin2[0];
 	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		subSumi[i] = subBin1[i] ^ subBin2[i] ^ ci[i-1];
