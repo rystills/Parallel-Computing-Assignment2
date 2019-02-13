@@ -277,12 +277,10 @@ int main(int argc, char* argv[]) {
 	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f\n",rank,numRanks,numRanks,rankFactor);
 
 	//treat test1.txt as stdin, and test1-output.txt as stdout
-	freopen(argv[1], "r", stdin);
-	freopen(argv[2], "w", stdout);
-
-
-	//master reads and formats the input
 	if (rank == 0) {
+		freopen(argv[1], "r", stdin);
+		freopen(argv[2], "w", stdout);
+		//master reads and formats the input
 		parseInput();
 	}
 
@@ -296,4 +294,5 @@ int main(int argc, char* argv[]) {
 	}
 	free(subBin1);
 	free(subBin2);
+	MPI_Finalize();
 }
