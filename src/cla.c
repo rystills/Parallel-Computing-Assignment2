@@ -37,16 +37,16 @@ char hex2[digits];
 //character array to store the final hex answer
 char hexAns[digits];
 //MPI data
-int numRanks = -1;
-int rank = -1;
-float rankFactor = -1;
-int elementsPerProc = -1;
+int numRanks = -1; //total number of ranks in the current run
+int rank = -1; //our rank
+float rankFactor = -1; //stores the value 1/numRanks; multiply your loop terminating bounds by rankFactor to get the bounds per rank
+int elementsPerProc = -1; //stores the value bits*rankFactor; use this number to determine the correct number of bits per rank array
 bool usingBarrier = true;
-//new vars for storing data subsets
-int *subBin1 = NULL;
-int *subBin2 = NULL;
-int *fullSumi = NULL;
-int prevSscl = -1;
+//new variables for storing data subsets when running in parallel
+int *subBin1 = NULL; //portion of bin1 binary input array
+int *subBin2 = NULL; //portion of bin2 binary input array
+int *fullSumi = NULL; //full sumi bit array filled during gather phase
+int prevSscl = -1; //value of the sscl carry bit received from previous rank
 
 /**
  * simple hex char to binary conversion
@@ -171,13 +171,7 @@ void calc_sscl() {
  * sck stores whether or not there is a carry bit for the current 64-bit section
  */
 void calc_sck() {
-	if (rank == 0) {
-		sck[0] = sgk[0];
-	}
-	else {
-		sck[0] = sgk[0] | (spk[0]&prevSscl);
-	}
-
+	sck[0] = sgk[0] | (rank == 0 ? 0 : (spk[0]&prevSscl));
 	for (int i = 1; i < (int)(nsections*rankFactor); ++i) {
 		sck[i] = (sgk[i] | (spk[i]&(i%block_size==0 ? sscl[i/block_size-1] : sck[i-1])));
 	}
@@ -187,12 +181,7 @@ void calc_sck() {
  * gcj stores whether or not there is a carry bit for the current 8-bit group
  */
 void calc_gcj() {
-	if (rank == 0) {
-		gcj[0] = ggj[0];
-	}
-	else {
-		gcj[0] = ggj[0] | (gpj[0]&prevSscl);
-	}
+	gcj[0] = ggj[0] | (rank == 0 ? 0 : (gpj[0]&prevSscl));
 	for (int i = 1; i < (int)(ngroups*rankFactor); ++i) {
 		gcj[i] = (ggj[i] | (gpj[i]&(i%block_size==0 ? sck[i/block_size-1] : gcj[i-1])));
 	}
@@ -202,12 +191,7 @@ void calc_gcj() {
  * ci stores whether or not there is a carry bit for the current bit
  */
 void calc_ci() {
-	if (rank == 0) {
-		ci[0] = gi[0];
-	}
-	else {
-		ci[0] = gi[0] | (pi[0]&prevSscl);
-	}
+	ci[0] = gi[0] | (rank == 0 ? 0 : (pi[0]&prevSscl));
 	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		ci[i] = (gi[i] | (pi[i]&(i%block_size==0 ? gcj[i/block_size-1] : ci[i-1])));
 	}
@@ -218,13 +202,7 @@ void calc_ci() {
  * sumi stores the final sum for the current bit
  */
 void calc_sumi() {
-	if (rank == 0) {
-		subSumi[0] = subBin1[0] ^ subBin2[0];
-	}
-	else {
-		subSumi[0] = subBin1[0] ^ subBin2[0] ^ prevSscl;
-	}
-
+	subSumi[0] = subBin1[0] ^ subBin2[0] ^ (rank == 0 ? 0 : prevSscl);
 	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		subSumi[i] = subBin1[i] ^ subBin2[i] ^ ci[i-1];
 	}
@@ -236,7 +214,6 @@ void calc_sumi() {
 void scatterData() {
 	subBin1 = malloc(sizeof(int) * elementsPerProc);
 	subBin2 = malloc(sizeof(int) * elementsPerProc);
-
 	MPI_Scatter(bin1, elementsPerProc, MPI_INT, subBin1, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(bin2, elementsPerProc, MPI_INT, subBin2, elementsPerProc, MPI_INT, 0, MPI_COMM_WORLD);
 }
@@ -312,9 +289,8 @@ int main(int argc, char* argv[]) {
 	rankFactor = 1/(float)numRanks;
 	elementsPerProc = bits*rankFactor;
 	subSumi = malloc(sizeof(int) * elementsPerProc);
-	printf("my rank is %d | total size is %d | rank factor is 1\\%d = %f | elementsPerProc is %d\n",rank,numRanks,numRanks,rankFactor,elementsPerProc);
 
-	//treat test1.txt as stdin, and test1-output.txt as stdout
+	//treat test1.txt as stdin, and test1-output.txt as stdout to simplify file i/o on rank 0
 	if (rank == 0) {
 		freopen(argv[1], "r", stdin);
 		freopen(argv[2], "w", stdout);
@@ -330,6 +306,8 @@ int main(int argc, char* argv[]) {
 		convertAnswerToHex();
 		free(fullSumi);
 	}
+
+	//make sure to clean up after yourself
 	free(subBin1);
 	free(subBin2);
 	free(subSumi);
