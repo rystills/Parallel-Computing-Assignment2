@@ -229,7 +229,7 @@ void gatherData() {
 }
 
 /**
- * main cla routine; calls all of the different sub-steps in order, with barriers between each step if enabled
+ * main cla (carry lookahead adder) routine; calls all of the different sub-steps in order, with barriers between each step if enabled
  */
 void cla() {
 	scatterData();
@@ -253,6 +253,28 @@ void cla() {
 	calc_sumi();
 	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	gatherData();
+}
+
+/**
+ * main rca (ripple carry adder) routine for performance comparison
+ */
+void rca() {
+	//step 1: calculate gi and pi, using bin1 and bin2
+	for (int i = 0; i < bits; ++i) {
+		gi[i] = bin1[i] & bin2[i];
+		pi[i] = (bin1[i] | bin2[i]);
+	}
+	//step 2: calculate ci, using gi and pi
+	ci[0] = gi[0];
+	for (int i = 1; i < bits; ++i) {
+		ci[i] = (gi[i] | (pi[i] & ci[i-1]));
+	}
+	//step 3: calculate sumi, using bin1 and bin2, and ci
+	fullSumi = malloc(sizeof(int) * bits);
+	fullSumi[0] = bin1[0] ^ bin2[0];
+	for (int i = 1; i < bits; ++i) {
+		fullSumi[i] = bin1[i] ^ bin2[i] ^ ci[i-1];
+	}
 }
 
 /**
