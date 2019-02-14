@@ -46,6 +46,7 @@ bool usingBarrier = true;
 int *subBin1 = NULL;
 int *subBin2 = NULL;
 int *fullSumi = NULL;
+int prevSscl = -1;
 
 /**
  * simple hex char to binary conversion
@@ -151,7 +152,6 @@ void calc_sscl() {
 		sscl[0] = ssgl[0];
 	}
 	else {
-		int prevSscl;
 		MPI_Recv(&prevSscl, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		sscl[0] = (ssgl[0] | (sspl[0]&prevSscl));
 	}
@@ -171,7 +171,13 @@ void calc_sscl() {
  * sck stores whether or not there is a carry bit for the current 64-bit section
  */
 void calc_sck() {
-	sck[0] = sgk[0];
+	if (rank == 0) {
+		sck[0] = sgk[0];
+	}
+	else {
+		sck[0] = sgk[0] | (spk[0]&prevSscl);
+	}
+
 	for (int i = 1; i < (int)(nsections*rankFactor); ++i) {
 		sck[i] = (sgk[i] | (spk[i]&(i%block_size==0 ? sscl[i/block_size-1] : sck[i-1])));
 	}
