@@ -47,6 +47,8 @@ int *subBin1 = NULL; //portion of bin1 binary input array
 int *subBin2 = NULL; //portion of bin2 binary input array
 int *fullSumi = NULL; //full sumi bit array filled during gather phase
 int prevSscl = -1; //value of the sscl carry bit received from previous rank
+MPI_Request ssclReq; //the request associated with our sscl carry bit receive message
+MPI_Status ssclStat; //the status associated with our sscl carry bit receive message
 
 /**
  * simple hex char to binary conversion
@@ -152,7 +154,8 @@ void calc_sscl() {
 		sscl[0] = ssgl[0];
 	}
 	else {
-		MPI_Recv(&prevSscl, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		//make sure the previous rank sscl carry bit request finished now with an MPI_Wait call to avoid a data race
+		MPI_Wait(&ssclReq, &ssclStat);
 		sscl[0] = (ssgl[0] | (sspl[0]&prevSscl));
 	}
 
@@ -163,7 +166,9 @@ void calc_sscl() {
 
 	//everyone but rank n-1 sends the carry out
 	if (rank != numRanks-1) {
-		MPI_Send(&sscl[(int)(nsupersections*rankFactor)-1], 1, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
+		//we can safely re-use the receive request here because sending happens strictly after receiving (no data race)
+		MPI_Isend(&sscl[(int)(nsupersections*rankFactor)-1], 1, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &ssclReq);
+		MPI_Request_free(&ssclReq);
 	}
 }
 /**
@@ -232,6 +237,8 @@ void gatherData() {
  * main cla (carry lookahead adder) routine; calls all of the different sub-steps in order, with barriers between each step if enabled
  */
 void cla() {
+	//post our carry bit non-blocking receive message before we start performing calculations
+	MPI_Irecv(&prevSscl, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, &ssclReq);
 	scatterData();
 	if (usingBarrier) MPI_Barrier(MPI_COMM_WORLD);
 	calc_gi_pi();
