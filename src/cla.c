@@ -47,8 +47,14 @@ int *subBin1 = NULL; //portion of bin1 binary input array
 int *subBin2 = NULL; //portion of bin2 binary input array
 int *fullSumi = NULL; //full sumi bit array filled during gather phase
 int prevSscl = -1; //value of the sscl carry bit received from previous rank
+//message passing vars
 MPI_Request ssclReq; //the request associated with our sscl carry bit receive message
 MPI_Status ssclStat; //the status associated with our sscl carry bit receive message
+//timing vars
+double sTime; //start time of cla execution
+double eTime; //end time of cla execution
+bool measuringPerformance = true;
+bool isCla = true; //whether to run cla (true) or rca (false)
 
 /**
  * simple hex char to binary conversion
@@ -311,7 +317,7 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
-	//init MPI and grab size and rank
+	//init MPI, grab size and rank, and define a few QoL vars
 	MPI_Init( &argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &numRanks);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -319,20 +325,25 @@ int main(int argc, char* argv[]) {
 	elementsPerProc = bits*rankFactor;
 	subSumi = malloc(sizeof(int) * elementsPerProc);
 
-	//treat test1.txt as stdin, and test1-output.txt as stdout to simplify file i/o on rank 0
+	//read and format the input on rank 0
 	if (rank == 0) {
+		//treat test1.txt as stdin, and test1-output.txt as stdout to simplify file i/o on rank 0
 		freopen(argv[1], "r", stdin);
-		freopen(argv[2], "w", stdout);
-		//master reads and formats the input
 		parseInput();
 	}
 
+	if (measuringPerformance) sTime = MPI_Wtime();
 	//everybody runs the main routine
-	cla();
+	if (isCla) cla(); else rca();
+	if (measuringPerformance) {
+		eTime = MPI_Wtime();
+		printf("Total time for Run(myRank = %d, #ranks = %d, usingBarrier = %d, isCla = %d) = %f\n",rank, numRanks,usingBarrier,isCla,eTime-sTime);
+	}
 
 	//master handles the final output
 	if (rank == 0) {
-		convertAnswerToHex();
+		freopen(argv[2], "w", stdout);
+		if (!measuringPerformance) convertAnswerToHex();
 		free(fullSumi);
 	}
 
