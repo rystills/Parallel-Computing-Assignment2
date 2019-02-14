@@ -191,7 +191,7 @@ void calc_gcj() {
 		gcj[0] = ggj[0];
 	}
 	else {
-		gcj[0] = ggj[0] | prevSscl;
+		gcj[0] = ggj[0] | (gpj[0]&prevSscl);
 	}
 	for (int i = 1; i < (int)(ngroups*rankFactor); ++i) {
 		gcj[i] = (ggj[i] | (gpj[i]&(i%block_size==0 ? sck[i/block_size-1] : gcj[i-1])));
@@ -206,7 +206,7 @@ void calc_ci() {
 		ci[0] = gi[0];
 	}
 	else {
-		ci[0] = gi[0] | prevSscl;
+		ci[0] = gi[0] | (pi[0]&prevSscl);
 	}
 	for (int i = 1; i < (int)(bits*rankFactor); ++i) {
 		ci[i] = (gi[i] | (pi[i]&(i%block_size==0 ? gcj[i/block_size-1] : ci[i-1])));
