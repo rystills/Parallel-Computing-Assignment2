@@ -53,7 +53,6 @@ MPI_Status ssclStat; //the status associated with our sscl carry bit receive mes
 //timing vars
 double sTime; //start time of cla execution
 double eTime; //end time of cla execution
-bool measuringPerformance = true;
 bool isCla = true; //whether to run cla (true) or rca (false)
 
 /**
@@ -332,18 +331,16 @@ int main(int argc, char* argv[]) {
 		parseInput();
 	}
 
-	if (measuringPerformance) sTime = MPI_Wtime();
+	sTime = MPI_Wtime();
 	//everybody runs the main routine
 	if (isCla) cla(); else rca();
-	if (measuringPerformance) {
-		eTime = MPI_Wtime();
-		printf("Total time for Run(myRank = %d, #ranks = %d, usingBarrier = %d, isCla = %d) = %f\n",rank, numRanks,usingBarrier,isCla,eTime-sTime);
-	}
+	eTime = MPI_Wtime();
+	printf("Total time for Run(myRank = %d\\%d,%s usingBarrier = %d, isCla = %d) = %f\n",rank, numRanks,rank < 10 ? " ":"", usingBarrier,isCla,eTime-sTime);
 
 	//master handles the final output
 	if (rank == 0) {
 		freopen(argv[2], "w", stdout);
-		if (!measuringPerformance) convertAnswerToHex();
+		convertAnswerToHex();
 		free(fullSumi);
 	}
 
