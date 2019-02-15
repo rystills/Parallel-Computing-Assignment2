@@ -335,7 +335,7 @@ int main(int argc, char* argv[]) {
 	//everybody runs the main routine
 	if (isCla) cla(); else rca();
 	eTime = MPI_Wtime();
-	printf("Total time for Run(myRank = %d\\%d,%s usingBarrier = %d, isCla = %d) = %f\n",rank, numRanks,rank < 10 ? " ":"", usingBarrier,isCla,eTime-sTime);
+	printf("Total run time (myRank = %d\\%d,%s usingBarrier = %d, isCla = %d) = %f\n",rank, numRanks,rank < 10 ? " ":"", usingBarrier,isCla,eTime-sTime);
 
 	//master handles the final output
 	if (rank == 0) {
